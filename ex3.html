@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Jagannath Temple Jharkhand — Interactive VR Story</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    /* --- Base layout --- */
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: Arial, Helvetica, sans-serif;
+      background-color: #0b0b0f;
+      color: #fff;
+      overflow: hidden;
+    }
+    #container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(180deg,#060617 0%,#0b0b0f 100%);
+    }
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+
+    /* --- Info panel --- */
+    #infoPanel {
+      position: absolute;
+      top: 18px;
+      left: 18px;
+      background: rgba(0,0,0,0.75);
+      padding: 14px;
+      border-radius: 10px;
+      max-width: 340px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+      backdrop-filter: blur(4px);
+    }
+    #infoPanel h2 { margin: 0 0 8px 0; font-size: 18px; letter-spacing: .3px; }
+    #infoPanel p { margin: 6px 0; font-size: 13px; line-height: 1.3; color: #f0f0f0; }
+    .hotspot {
+      display: block;
+      margin-top: 8px;
+      padding: 8px 12px;
+      background: linear-gradient(180deg,#ff9800,#ffb14d);
+      color: #071017;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 700;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      transition: transform .12s ease, box-shadow .12s ease;
+      text-align: left;
+    }
+    .hotspot:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.45); }
+    .hotspot.small { padding: 6px 8px; font-weight:600; font-size:13px; max-width:100%; }
+
+    /* --- Fullscreen button --- */
+    #fullscreenBtn {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      padding: 10px 14px;
+      font-size: 15px;
+      background: #1976d2;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+    }
+    #fullscreenBtn:hover { background: #0d63b3; }
+
+    /* --- Story panel (collapsible) --- */
+    #storyPanel {
+      position: absolute;
+      left: 18px;
+      bottom: 18px;
+      width: 360px;
+      max-height: 46%;
+      overflow-y: auto;
+      background: rgba(8,8,10,0.82);
+      padding: 12px;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      display: none;
+    }
+    #storyPanel h3 { margin: 0 0 6px 0; font-size: 16px; }
+    #storyPanel .storyText { font-size: 14px; line-height:1.5; color:#eee; }
+    #storyControls { margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; }
+
+    /* --- Choose-path modal --- */
+    #pathModal {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%,-50%);
+      background: rgba(6,6,6,0.95);
+      padding: 18px;
+      border-radius: 12px;
+      width: 340px;
+      display: none;
+      z-index: 40;
+      box-shadow: 0 18px 48px rgba(0,0,0,0.7);
+      text-align:center;
+    }
+    #pathModal h3 { margin-top:0; }
+    .pathBtn { padding:10px 12px; margin:8px 6px; border-radius:8px; background:#ff7043; border:none; color:#071017; font-weight:700; cursor:pointer; }
+
+    /* --- Popup badges --- */
+    .popup {
+      position: absolute;
+      background: rgba(255,255,255,0.95);
+      color: #071017;
+      padding: 10px 12px;
+      border-radius: 8px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+      font-size: 13px;
+      z-index: 50;
+      opacity: 0;
+      transform: translateY(8px) scale(.98);
+      transition: all 380ms cubic-bezier(.2,.9,.25,1);
+      pointer-events: none;
+      max-width: 260px;
+    }
+    .popup.show { opacity: 1; transform: translateY(0) scale(1); }
+
+    /* --- Animated hotspot effects --- */
+    .pulse {
+      animation: pulse 1600ms infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(255,152,0,0.6); }
+      70% { box-shadow: 0 0 0 18px rgba(255,152,0,0); }
+      100% { box-shadow: 0 0 0 0 rgba(255,152,0,0); }
+    }
+    .ring {
+      animation: ring 700ms ease-in-out;
+    }
+    @keyframes ring {
+      0% { transform: rotate(0deg); }
+      15% { transform: rotate(-14deg); }
+      30% { transform: rotate(10deg); }
+      50% { transform: rotate(-6deg); }
+      65% { transform: rotate(4deg); }
+      80% { transform: rotate(-2deg); }
+      100% { transform: rotate(0deg); }
+    }
+
+    /* --- Progress / Quest bar --- */
+    #questBarWrap {
+      margin-top: 10px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 8px;
+      overflow: hidden;
+      height: 12px;
+    }
+    #questBar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg,#ffd54f,#ff9800);
+      transition: width 380ms ease;
+    }
+    #questStatus { font-size: 12px; margin-top:6px; color:#ddd; }
+
+    /* --- small bottom-right controls --- */
+    #miniControls {
+      position: absolute;
+      right: 18px;
+      bottom: 18px;
+      display:flex;
+      gap:8px;
+      z-index:30;
+    }
+    .miniBtn {
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.06);
+      border: none;
+      color: #fff;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    /* responsive tweaks */
+    @media (max-width:720px) {
+      #infoPanel { max-width: 88%; left: 6%; top: 12px; padding: 10px; }
+      #storyPanel { left: 6%; width: 88%; max-height: 42%; padding: 10px; bottom: 12px; }
+      #pathModal { width: 90%; }
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+
+    <!-- VR / Street View iframe (unchanged) -->
+    <iframe 
+      src="https://www.google.com/maps/embed?pb=!4v1757587884700!6m8!1m7!1sCAoSFkNJSE0wb2dLRUlDQWdJQ0U1c0hrS1E.!2m2!1d23.3671!2d85.3325!3f130.0957209385577!4f11.690363943367217!5f0.7820865974627469" 
+      allowfullscreen 
+      loading="lazy"
+      id="streetViewIframe"
+      title="Jagannath Temple Street View">
+    </iframe>
+
+    <!-- Info panel overlay -->
+    <div id="infoPanel" aria-live="polite">
+      <h2>Jagannath Temple — Ranchi</h2>
+      <p>Built 1691 by Ani Nath Shahdeo. A hilltop of faith and living stories — step up and let the temple speak.</p>
+
+      <!-- Quest / Visited progress -->
+      <div id="questBarWrap" aria-hidden="false">
+        <div id="questBar"></div>
+      </div>
+      <div id="questStatus">Temple Trail: <span id="visitedCount">0</span>/<span id="totalHotspots">5</span> visited</div>
+
+      <!-- Hotspot buttons -->
+      <button class="hotspot" id="btn-sanc" onclick="handleHotspot('sanctum', this)">🔱 Sanctum</button>
+      <button class="hotspot" id="btn-bell" onclick="handleHotspot('templeBell', this)">🔔 Temple Bell</button>
+      <button class="hotspot" id="btn-cour" onclick="handleHotspot('courtyard', this)">🏵️ Courtyard</button>
+      <button class="hotspot" id="btn-sud" onclick="handleHotspot('sudarshana', this)">🌀 Sudarshana Mystery</button>
+      <button class="hotspot" id="btn-rath" onclick="handleHotspot('rathyatra', this)">🚩 Rath Yatra</button>
+
+      <div id="hotspotInfo" style="margin-top:10px; font-size:13px; color:#eee;"></div>
+
+      <!-- story and path controls -->
+      <div id="storyControls" style="margin-top:10px;">
+        <button class="hotspot small" onclick="openPathModal()">Choose Your Story Path</button>
+        <button class="hotspot small" onclick="toggleStoryPanel()">📖 Legend Scroll</button>
+        <button class="hotspot small" onclick="toggleQuestMode()">🎯 Quest Mode</button>
+      </div>
+      <div style="margin-top:8px; display:flex; gap:8px;">
+        <button class="hotspot small" onclick="resetQuest()">Reset Trail</button>
+        <button class="hotspot small" onclick="centerView()">🔁 Center View</button>
+      </div>
+    </div>
+
+    <!-- Story panel (collapsible) -->
+    <div id="storyPanel" aria-live="polite">
+      <h3 id="storyTitle">Temple Legend</h3>
+      <div class="storyText" id="storyText">
+        <!-- filled by JS -->
+      </div>
+      <div id="storyControls">
+        <button class="hotspot small" onclick="playCurrentNarration()">🔊 Hear Story</button>
+        <button class="hotspot small" onclick="toggleAutoPopups()">✨ Toggle Popups</button>
+        <button class="hotspot small" onclick="downloadStory()">⬇️ Download Text</button>
+      </div>
+    </div>
+
+    <!-- path choice modal -->
+    <div id="pathModal" role="dialog" aria-modal="true">
+      <h3>Choose a story path</h3>
+      <p style="color:#ddd; font-size:13px;">Pick one and listen to its immersive retelling.</p>
+      <div style="display:flex; justify-content:center; gap:8px; margin-top:8px;">
+        <button class="pathBtn" onclick="choosePath('sudarshana')">Sudarshana Chakra Mystery</button>
+        <button class="pathBtn" onclick="choosePath('rathyatra')">Rath Yatra & Snan Yatra</button>
+      </div>
+      <div style="margin-top:10px;">
+        <button class="miniBtn" onclick="closePathModal()">Close</button>
+      </div>
+    </div>
+
+    <!-- Mini controls -->
+    <div id="miniControls">
+      <button class="miniBtn" onclick="toggleStoryPanel()">Legend</button>
+      <button class="miniBtn" onclick="openPathModal()">Pick Path</button>
+    </div>
+
+    <!-- Fullscreen toggle -->
+    <button id="fullscreenBtn" onclick="goFullscreen()">Toggle Fullscreen</button>
+
+  </div>
+
+  <script>
+    /**************************************************************************
+     * Interactive Story + Quest + Audio (Web Speech + WebAudio)
+     * Implements:
+     *  - audio storytelling via SpeechSynthesis (no external files required)
+     *  - quest mode: track hotspots visited, unlock full narration
+     *  - overlay popups (Did you know?) on events
+     *  - animated hotspot UI with bell/drum sound via WebAudio
+     *  - choose-your-path branching (sudarshana vs rathyatra)
+     **************************************************************************/
+
+    // --- Configuration / Story content ---
+    const hotspots = ['sanctum','templeBell','courtyard','sudarshana','rathyatra'];
+    const hotspotTexts = {
+      sanctum: "The sanctum holds Lord Jagannath with Balabhadra and Subhadra. Only priests enter, but the hill's steps are believed to cleanse those who climb.",
+      templeBell: "Devotees ring the temple bell before prayer — a sound that calls hearts to stillness. Old storytellers say the bell once echoed for miles during Rath Yatra.",
+      courtyard: "The courtyard gathers devotees for rituals and fairs. Here the people meet — a true communal hearth.",
+      sudarshana: "The Sudarshana Chakra atop the temple inspires awe. Locals still ask: how was a massive wheel placed without modern cranes, centuries ago? Some whisper of divine help.",
+      rathyatra: "During Snan Yatra, the deities are bathed and kept secluded, as if 'ill'. For many days devotees wait for their recovery and the return that marks the Rath Yatra procession."
+    };
+
+    // Full / branch story segments
+    const storySegments = {
+      intro: "They say every stone here whispers a secret. Built in 1691 by Ani Nath Shahdeo, the Jagannath Temple in Ranchi is a hilltop where history, devotion, and folk magic meet.",
+      sudarshana: "The Sudarshana Chakra mystery: villagers still recall the day the mighty wheel was placed. Without modern cranes, the feat was recorded only in memory - some insist it was lifted by unseen hands. When you look up at the shining wheel, imagine countless hands — human or divine — lifting hope itself.",
+      rathyatra: "Rath Yatra & Snan Yatra: after the great ceremonial bath, the deities are secluded, as devotees say they 'fall ill' and recover. The town holds its breath; drums and chants return only when the gods step out again on their chariots.",
+      steps: "Climb the ancient steps, and people say each footfall washes away a small worry. The journey up is part pilgrimage, part story — and every visitor becomes a small chapter in the temple's living legend.",
+      full: function() {
+        return [this.intro, this.steps, this.sudarshana, this.rathyatra].join(" ");
+      }
+    };
+
+    // --- State ---
+    let visited = new Set(JSON.parse(localStorage.getItem('visitedHotspots') || "[]"));
+    let questMode = true;
+    let autoPopups = true;
+    let currentPath = null; // 'sudarshana' or 'rathyatra' or null
+    const container = document.getElementById('container');
+
+    // Initialize UI counts
+    document.getElementById('totalHotspots').innerText = hotspots.length;
+    updateVisitedUI();
+
+    // --- Hotspot handler (marks visited, plays fx, shows info) ---
+    function handleHotspot(key, el) {
+      // Provide immediate microinteraction for animation and sound
+      animateHotspot(el);
+      if (key === 'templeBell') {
+        playBellSound();
+      } else if (key === 'rathyatra') {
+        playDrumSound();
+      } else {
+        playTapTone();
+      }
+
+      // Show informational text and a small popup
+      showHotspotInfo(key);
+
+      // Mark visited and update quest progress
+      if (!visited.has(key)) {
+        visited.add(key);
+        localStorage.setItem('visitedHotspots', JSON.stringify(Array.from(visited)));
+        updateVisitedUI();
+        if (questMode && visited.size === hotspots.length) {
+          // Unlock: all visited
+          showPopup("🎉 You completed the Temple Trail! Full immersive narration unlocked.", 60, 70);
+          // Auto-open story panel and set to full
+          currentPath = 'full';
+          openStoryPanelAndSetTitle("Full Immersive Legend");
+        } else if (questMode) {
+          showPopup("Tip: Visit other hotspots to unlock the full legend.", 80, 120);
+        }
+      }
+
+      // small popup specific to the hotspot
+      timedDidYouKnow(key);
+    }
+
+    function animateHotspot(el) {
+      // add pulse then ring classes
+      el.classList.add('pulse');
+      setTimeout(()=> el.classList.remove('pulse'), 1600);
+      el.classList.add('ring');
+      setTimeout(()=> el.classList.remove('ring'), 800);
+    }
+
+    // --- Info display for hotspot ---
+    function showHotspotInfo(key) {
+      const info = document.getElementById('hotspotInfo');
+      const text = hotspotTexts[key] || "This spot holds quiet stories.";
+      info.innerHTML = `<strong>${titleCase(key)}</strong><p style="margin:6px 0 0 0;">${text}</p>
+        <div style="margin-top:8px;">
+          <button class="hotspot small" onclick="openStoryFor('${key}')">Hear this part</button>
+          <button class="hotspot small" onclick="openStoryPanelAndSetTitle('Legend: ${titleCase(key)}')">Read more</button>
+        </div>`;
+    }
+
+    function titleCase(str) {
+      return str.split(/(?=[A-Z])|_|(?<=\b)/g).map(s => s.charAt(0).toUpperCase()+s.slice(1)).join(' ').replace(/\s+/g,' ').trim();
+    }
+
+    // --- Quest / progress UI ---
+    function updateVisitedUI() {
+      const count = visited.size;
+      document.getElementById('visitedCount').innerText = count;
+      const pct = Math.round((count / hotspots.length) * 100);
+      document.getElementById('questBar').style.width = pct + "%";
+      document.getElementById('questStatus').innerText = `Temple Trail: ${count}/${hotspots.length} visited`;
+    }
+
+    function toggleQuestMode() {
+      questMode = !questMode;
+      showPopup(questMode ? "Quest Mode ON: visit all hotspots to unlock full narration." : "Quest Mode OFF: explore freely.", 40, 40);
+    }
+
+    function resetQuest() {
+      if (!confirm("Reset your Temple Trail progress?")) return;
+      visited = new Set();
+      localStorage.setItem('visitedHotspots', JSON.stringify([]));
+      updateVisitedUI();
+      showPopup("Trail reset. Begin your climb again!", 60, 60);
+    }
+
+    // --- Speech Synthesis Narration (plays current story or a chosen segment) ---
+    function playTextNarration(text, opts = {}) {
+      // Stops any previous utterances
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = opts.lang || 'en-IN';
+      u.rate = opts.rate || 1.0;
+      u.pitch = opts.pitch || 1.0;
+      // highlight storyPanel while reading
+      const storyPanel = document.getElementById('storyPanel');
+      storyPanel.style.boxShadow = "0 18px 48px rgba(255,195,92,0.14)";
+      u.onend = () => { storyPanel.style.boxShadow = ""; };
+      window.speechSynthesis.speak(u);
+    }
+
+    function playCurrentNarration() {
+      // choose current path or show modal
+      if (currentPath === 'sudarshana') {
+        playTextNarration(storySegments.sudarshana, {rate:1.02, pitch:1});
+      } else if (currentPath === 'rathyatra') {
+        playTextNarration(storySegments.rathyatra, {rate:0.98, pitch:1});
+      } else if (currentPath === 'full') {
+        playTextNarration(storySegments.full(), {rate:0.98, pitch:1});
+      } else {
+        // default: speak intro
+        playTextNarration(storySegments.intro, {rate:1.0, pitch:1});
+      }
+    }
+
+    function openStoryFor(key) {
+      // open panel and load that segment
+      closePathModal();
+      openStoryPanelAndSetTitle("Legend: " + titleCase(key));
+      document.getElementById('storyText').innerText = hotspotTexts[key] + "\n\n" + (key === 'sudarshana' ? storySegments.sudarshana : key === 'rathyatra' ? storySegments.rathyatra : "");
+      playTextNarration(document.getElementById('storyText').innerText);
+    }
+
+    // --- Story panel controls ---
+    function toggleStoryPanel() {
+      const sp = document.getElementById('storyPanel');
+      if (sp.style.display === 'none' || sp.style.display === '') {
+        // open with current selection
+        openStoryPanelAndSetTitle(currentPath === 'sudarshana' ? "Sudarshana" : currentPath === 'rathyatra' ? "Rath Yatra" : "Temple Legend");
+      } else {
+        sp.style.display = 'none';
+      }
+    }
+    function openStoryPanelAndSetTitle(title) {
+      const sp = document.getElementById('storyPanel');
+      document.getElementById('storyTitle').innerText = title || "Temple Legend";
+      // choose what text to show
+      if (title.toLowerCase().includes('sudarshana')) {
+        document.getElementById('storyText').innerText = storySegments.sudarshana;
+      } else if (title.toLowerCase().includes('rath')) {
+        document.getElementById('storyText').innerText = storySegments.rathyatra;
+      } else if (currentPath === 'full' || title.toLowerCase().includes('full')) {
+        document.getElementById('storyText').innerText = storySegments.full();
+      } else {
+        document.getElementById('storyText').innerText = storySegments.intro + "\n\n" + storySegments.steps;
+      }
+      sp.style.display = 'block';
+    }
+
+    // --- Choose-path modal ---
+    function openPathModal() {
+      document.getElementById('pathModal').style.display = 'block';
+    }
+    function closePathModal() {
+      document.getElementById('pathModal').style.display = 'none';
+    }
+    function choosePath(p) {
+      if (p !== 'sudarshana' && p !== 'rathyatra') return;
+      currentPath = p;
+      closePathModal();
+      openStoryPanelAndSetTitle(p === 'sudarshana' ? "Sudarshana Chakra Mystery" : "Rath Yatra & Snan Yatra");
+      playCurrentNarration();
+      showPopup("Path selected: " + (p==='sudarshana' ? 'Sudarshana' : 'Rath Yatra'), 240, 60);
+    }
+
+    // --- Overlayed popups (Did you know?) ---
+    function showPopup(message, x = 100, y = 100, duration = 4500) {
+      const p = document.createElement('div');
+      p.className = 'popup';
+      p.innerHTML = message;
+      // place relative to container
+      p.style.left = (typeof x === 'number' ? (x + 'px') : x);
+      p.style.top  = (typeof y === 'number' ? (y + 'px') : y);
+      container.appendChild(p);
+      // show
+      requestAnimationFrame(()=> p.classList.add('show'));
+      // remove after duration
+      setTimeout(()=> {
+        p.classList.remove('show');
+        setTimeout(()=> p.remove(), 450);
+      }, duration);
+    }
+
+    // timed did-you-know per hotspot click
+    function timedDidYouKnow(key) {
+      if (!autoPopups) return;
+      const texts = {
+        sanctum: "Did you know? Pilgrims say the climb itself is a blessing — each step cleans a worry.",
+        templeBell: "Did you know? Older town tales claim the bell once rang across the valley during Rath Yatra.",
+        courtyard: "Did you know? The courtyard was historically a meeting place for festivals and tribal fairs.",
+        sudarshana: "Did you know? The Sudarshana Chakra's placement is recorded only in oral memory — no crane stories survive.",
+        rathyatra: "Did you know? After the Snan Yatra bath, the deities are kept secluded for a few days, 'recovering'."
+      };
+      // random offset so popup sits near info panel
+      const x = 380 + Math.floor(Math.random() * 20);
+      const y = 120 + Math.floor(Math.random() * 60);
+      showPopup(texts[key] || "A whispered secret.", x, y, 4800);
+    }
+
+    function toggleAutoPopups() {
+      autoPopups = !autoPopups;
+      showPopup(autoPopups ? "Popups ON" : "Popups OFF", 70, 70);
+    }
+
+    // small automatic popups to welcome
+    setTimeout(()=> showPopup("Welcome to the Jagannath Temple VR experience — try hotspots to unlock the legend!", 80, 300, 6000), 1200);
+    setTimeout(()=> showPopup("Tip: Use 'Choose Your Story Path' to pick a legend to hear.", 80, 360, 6000), 4200);
+
+    // --- WebAudio FX: bell, drum, tap tone ---
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+    function ensureAudioCtx() { if (!audioCtx) audioCtx = new AudioCtx(); }
+
+    function playBellSound() {
+      ensureAudioCtx();
+      const ctx = audioCtx;
+      const now = ctx.currentTime;
+      // Bell uses multiple oscillators with decaying gain -> metallic bell
+      const carrier1 = ctx.createOscillator(); carrier1.type = 'sine'; carrier1.frequency.value = 900;
+      const carrier2 = ctx.createOscillator(); carrier2.type = 'sine'; carrier2.frequency.value = 600;
+      const g = ctx.createGain(); g.gain.value = 0;
+      const hpf = ctx.createBiquadFilter(); hpf.type = 'highpass'; hpf.frequency.value = 400;
+      carrier1.connect(g); carrier2.connect(g); g.connect(hpf); hpf.connect(ctx.destination);
+      // Envelope
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(0.9, now + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 2.2);
+      carrier1.start(now); carrier2.start(now);
+      carrier1.stop(now + 2.4); carrier2.stop(now + 2.4);
+    }
+
+    function playDrumSound() {
+      ensureAudioCtx();
+      const ctx = audioCtx;
+      const now = ctx.currentTime;
+      const o = ctx.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(110, now);
+      const g = ctx.createGain(); g.gain.value = 1;
+      const q = ctx.createBiquadFilter(); q.type = 'lowpass'; q.frequency.value = 300;
+      o.connect(g); g.connect(q); q.connect(ctx.destination);
+      g.gain.setValueAtTime(1.2, now);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+      o.start(now); o.stop(now + 0.9);
+    }
+
+    function playTapTone() {
+      ensureAudioCtx();
+      const ctx = audioCtx;
+      const now = ctx.currentTime;
+      const o = ctx.createOscillator(); o.type='triangle'; o.frequency.value = 880;
+      const g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      g.gain.setValueAtTime(0, now);
+      g.gain.linearRampToValueAtTime(0.3, now + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+      o.start(now); o.stop(now + 0.6);
+    }
+
+    // --- small utilities ---
+    function centerView() {
+      // reload iframe to center, or scroll container - here we reload iframe src to "reset view"
+      const iframe = document.getElementById('streetViewIframe');
+      const src = iframe.src;
+      iframe.src = src; // quick reload to center the view
+      showPopup("View centered.", 70, 100);
+    }
+
+    // -- Download story text as .txt --
+    function downloadStory() {
+      const text = document.getElementById('storyText').innerText || storySegments.full();
+      const blob = new Blob([text], {type: 'text/plain'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = "Jagannath_Temple_Legend.txt";
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+      showPopup("Legend downloaded.", 60, 60);
+    }
+
+    // --- On load actions ---
+    (function init() {
+      // If already visited some hotspots, update bar visual
+      updateVisitedUI();
+      // make some hotspots visually pulse to invite click
+      setTimeout(()=> document.getElementById('btn-rath').classList.add('pulse'), 800);
+      setTimeout(()=> document.getElementById('btn-sud').classList.add('pulse'), 2000);
+      setTimeout(()=> document.getElementById('btn-sanc').classList.add('pulse'), 3200);
+      // remove pulses later to avoid constant animation
+      setTimeout(()=> {
+        document.getElementById('btn-rath').classList.remove('pulse');
+        document.getElementById('btn-sud').classList.remove('pulse');
+        document.getElementById('btn-sanc').classList.remove('pulse');
+      }, 9000);
+    })();
+
+    // --- Fullscreen toggle ---
+    function goFullscreen() {
+      const elem = document.getElementById('container');
+      if (elem.requestFullscreen) elem.requestFullscreen();
+      else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+      else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
+    }
+
+    // Accessibility: close modal with ESC
+    window.addEventListener('keydown', (ev) => {
+      if (ev.key === "Escape") {
+        closePathModal();
+        const sp = document.getElementById('storyPanel');
+        if (sp && sp.style.display === 'block') sp.style.display = 'none';
+      }
+    });
+
+  </script>
+</body>
+</html>
